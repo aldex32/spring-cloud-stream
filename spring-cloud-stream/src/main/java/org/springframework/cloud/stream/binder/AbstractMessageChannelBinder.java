@@ -85,6 +85,8 @@ public abstract class AbstractMessageChannelBinder<C extends ConsumerProperties,
 	 */
 	private final String[] headersToEmbed;
 
+	private String[] headerPatterns;
+
 	public AbstractMessageChannelBinder(boolean supportsHeadersNatively, String[] headersToEmbed,
 			PP provisioningProvider) {
 		this.supportsHeadersNatively = supportsHeadersNatively;
@@ -525,6 +527,10 @@ public abstract class AbstractMessageChannelBinder<C extends ConsumerProperties,
 		return destination.getName() + ".errors";
 	}
 
+	protected void setHeaderPatterns(String[] headerPatterns) {
+		this.headerPatterns = headerPatterns != null ? headerPatterns : new String[0];
+	}
+
 	private final class ReceivingHandler extends AbstractReplyProducingMessageHandler {
 
 		private final boolean extractEmbeddedHeaders;
@@ -614,7 +620,9 @@ public abstract class AbstractMessageChannelBinder<C extends ConsumerProperties,
 				if (originalContentType instanceof MimeType) {
 					transformed.put(BinderHeaders.BINDER_ORIGINAL_CONTENT_TYPE, originalContentType.toString());
 				}
-				payload = EmbeddedHeaderUtils.embedHeaders(transformed, this.embeddedHeaders);
+				// headerPattern property will overcome the headers property
+				String[] headersToEmbed = headerPatterns.length > 0 ? EmbeddedHeaderUtils.headersToEmbed(transformed, headerPatterns) : this.embeddedHeaders;
+				payload = EmbeddedHeaderUtils.embedHeaders(transformed, headersToEmbed);
 			}
 			else {
 				payload = (byte[]) transformed.getPayload();

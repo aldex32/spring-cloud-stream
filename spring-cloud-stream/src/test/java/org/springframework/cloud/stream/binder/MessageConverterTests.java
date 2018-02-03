@@ -138,4 +138,45 @@ public class MessageConverterTests {
 
 	}
 
+	@Test
+	public void testHeaderPatterns() {
+		// Message with only one custom header
+		final String headerName = "foo";
+		Message<byte[]> message = MessageBuilder.withPayload("Hello".getBytes()).setHeader(headerName, "bar").build();
+		MessageValues messageValues = new MessageValues(message);
+
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "foo")).contains(headerName);
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "f*")).contains(headerName);
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "*")).contains(headerName);
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "!a*")).contains(headerName);
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "a*")).doesNotContain(headerName);
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "a")).doesNotContain(headerName);
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "!f*")).doesNotContain(headerName);
+
+		// Message with more than one custom header
+		final String secondHeaderName = "foo_2";
+		final String thirdHeaderName = "foo_3";
+		final String forthHeaderName = "bar";
+		message = MessageBuilder.fromMessage(message)
+				.setHeader(secondHeaderName, "bar")
+				.setHeader(thirdHeaderName, "baz")
+				.setHeader(forthHeaderName, "qux")
+				.build();
+		messageValues = new MessageValues(message);
+
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "foo*"))
+				.contains(headerName, secondHeaderName, thirdHeaderName)
+				.doesNotContain(forthHeaderName);
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "!ba*"))
+				.contains(headerName, secondHeaderName, thirdHeaderName)
+				.doesNotContain(forthHeaderName);
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "ba*"))
+				.contains(forthHeaderName)
+				.doesNotContain(headerName, secondHeaderName, thirdHeaderName);
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "qu*"))
+				.doesNotContain(headerName, secondHeaderName, thirdHeaderName, forthHeaderName);
+		assertThat(EmbeddedHeaderUtils.headersToEmbed(messageValues, "foo*", "ba*"))
+				.contains(headerName, secondHeaderName, thirdHeaderName, forthHeaderName);
+	}
+
 }

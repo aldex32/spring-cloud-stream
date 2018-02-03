@@ -18,17 +18,24 @@ package org.springframework.cloud.stream.binder;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.xml.bind.DatatypeConverter;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.support.json.Jackson2JsonObjectMapper;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.ObjectUtils;
+import org.springframework.util.PatternMatchUtils;
 
 /**
  * Encodes requested headers into payload with format
@@ -44,10 +51,13 @@ import org.springframework.util.ObjectUtils;
  * @author Gary Russell
  * @author Ilayaperumal Gopinathan
  * @author Marius Bogoevici
+ * @author Aldo Sinanaj
  *
  * @since 1.2
  */
 public abstract class EmbeddedHeaderUtils {
+
+	private static final Log logger = LogFactory.getLog(EmbeddedHeaderUtils.class);
 
 	private static final Jackson2JsonObjectMapper objectMapper = new Jackson2JsonObjectMapper();
 
@@ -191,6 +201,25 @@ public abstract class EmbeddedHeaderUtils {
 			headersToMap = combinedHeadersToMap;
 		}
 		return headersToMap;
+	}
+
+	public static String[] headersToEmbed(MessageValues original, String... patterns) {
+		final List<String> headers = new ArrayList<String>();
+		for (Map.Entry<String, Object> entry: original.getHeaders().entrySet()) {
+			for (String pattern : patterns) {
+				boolean negate = pattern.startsWith("!");
+				String simplePattern = pattern;
+				if (negate) {
+					simplePattern = pattern.substring(1);
+				}
+				if (PatternMatchUtils.simpleMatch(simplePattern, entry.getKey()) ^ negate) {
+					headers.add(entry.getKey());
+					break;
+				}
+			}
+		}
+
+		return headersToEmbed(headers.toArray(new String[headers.size()]));
 	}
 
 }
